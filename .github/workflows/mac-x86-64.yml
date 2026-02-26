@@ -1,4 +1,4 @@
-name: mac sillicon build
+name: mac x86-64 build
 
 on:
   push:
