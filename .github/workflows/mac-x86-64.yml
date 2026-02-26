@@ -18,19 +18,10 @@ jobs:
     - name: Install dependencies
       run: |
         brew update
-        brew install pkg-config autoconf automake libtool glib libusb
+        brew install pkg-config autoconf automake libtool glib libusb libimobile macfuse
 
     - name: Prepare environment
       run: echo "target_triplet=$(uname -m)-apple-darwin" >> $GITHUB_ENV
-
-    - name: Install macfuse
-      run: |
-        brew install macfuse
-
-    - name: Install libimobile
-      run: |
-        brew install libimobiledevice
-        pkg-config --modversion libimobiledevice-1.0
 
     - name: Autogen
       run: |
