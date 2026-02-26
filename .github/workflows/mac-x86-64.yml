@@ -1,0 +1,58 @@
+name: mac sillicon build
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-macos-latest:
+    runs-on: macos-15-intel
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Install dependencies
+      run: |
+        brew update
+        brew install pkg-config autoconf automake libtool glib libusb
+
+    - name: Prepare environment
+      run: echo "target_triplet=$(uname -m)-apple-darwin" >> $GITHUB_ENV
+
+    - name: Install macfuse
+      run: |
+        brew install macfuse
+
+    - name: Install libimobile
+      run: |
+        brew install libimobiledevice
+        pkg-config --modversion libimobiledevice-1.0
+
+    - name: Autogen
+      run: |
+        export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
+        #export CFLAGS="-I/opt/homebrew/include $CFLAGS"
+        #export LDFLAGS="-L/opt/homebrew/lib $LDFLAGS"
+        export CFLAGS="-I/usr/local/include $CFLAGS"
+        export LDFLAGS="-L/usr/local/lib $LDFLAGS"
+        ./autogen.sh
+
+    - name: Build
+      run: make -j$(sysctl -n hw.ncpu)
+
+    - name: Stage install
+      run: make DESTDIR=$PWD/stage install
+
+    - name: Compress staged build
+      run: |
+        tar -czf ifuse-macos-${{ env.target_triplet }}.tar.gz -C stage .
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ifuse-macos-${{ env.target_triplet }}
+        path: ifuse-macos-${{ env.target_triplet }}.tar.gz
