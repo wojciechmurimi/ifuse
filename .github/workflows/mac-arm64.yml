@@ -58,7 +58,14 @@ jobs:
       run: |
         echo "Checking linked libraries..."
         otool -L bundle/bin/ifuse
-
+        
+    - name: Deep verify dylibs
+      run: |
+        for lib in bundle/lib/*.dylib; do
+          echo "Checking $lib"
+          otool -L "$lib"
+        done
+    
     - name: Create DMG
       run: |
         hdiutil create \
