@@ -38,12 +38,38 @@ jobs:
     - name: Stage install
       run: make DESTDIR=$PWD/stage install
 
-    - name: Compress staged build
+    - name: Bundle binary and dependencies
       run: |
-        tar -czf ifuse-macos-${{ env.target_triplet }}.tar.gz -C stage .
+          mkdir -p bundle/bin
+          mkdir -p bundle/lib
+          
+          cp stage/usr/local/bin/ifuse bundle/bin/
+          
+          export DYLD_LIBRARY_PATH=/opt/homebrew/lib:$DYLD_LIBRARY_PATH
+
+          dylibbundler \
+            -od \
+            -b \
+            -x bundle/bin/ifuse \
+            -d bundle/lib \
+            -p @executable_path/../lib
+
+    - name: Verify linkage
+      run: |
+        echo "Checking linked libraries..."
+        otool -L bundle/bin/ifuse
+
+    - name: Create DMG
+      run: |
+        hdiutil create \
+            -volname ifuse \
+            -srcfolder bundle \
+            -ov \
+            -format UDZO \
+            ifuse-macos-${{ env.target_triplet }}.dmg
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: ifuse-macos-${{ env.target_triplet }}
-        path: ifuse-macos-${{ env.target_triplet }}.tar.gz
+          name: ifuse-macos-${{ env.target_triplet }}
+          path: ifuse-macos-${{ env.target_triplet }}.dmg
