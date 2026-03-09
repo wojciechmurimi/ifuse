@@ -83,5 +83,5 @@ jobs:
           echo "TAG=$TAG" >> $GITHUB_ENV
           echo "Generated tag: $TAG"
           gh release create "$TAG" --title "Release"
-          gh release upload "$TAG" winifuse_w64_w64.zip  
+          gh release upload "$TAG" winifuse_w64.zip  
         shell: bash       
