@@ -52,7 +52,7 @@ jobs:
           mkdir -p rel
           git clone "https://github.com/winfsp/winfsp.git"
           clang src/ifuse.c -I"winfsp/inc/fuse3" -l"imobiledevice-1.0" -l"usbmuxd-2.0" -l"plist-2.0" -o rel/ifuse -O3
-          cat > start_ifuse.bat << 'EOF'
+          cat > rel/start_ifuse.bat << 'EOF'
           @echo off
           if "%~1"=="" (
             echo Usage: start_ifuse.bat [ifuse arguments]
@@ -61,7 +61,7 @@ jobs:
           start "" /min ifuse.exe %*
           EOF
 
-          cat > stop_ifuse.bat << 'EOF'
+          cat > rel/stop_ifuse.bat << 'EOF'
           @echo off
           taskkill /IM ifuse.exe /F
           EOF
