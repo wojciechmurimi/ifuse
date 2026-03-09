@@ -1,4 +1,4 @@
-name: build
+name: windows build
 
 on:
   workflow_dispatch:
@@ -51,7 +51,7 @@ jobs:
         run: |
           mkdir -p rel
           git clone "https://github.com/winfsp/winfsp.git"
-          clang src/main.c -I"winfsp/inc/fuse3" -l"imobiledevice-1.0" -l"usbmuxd-2.0" -l"plist-2.0" -o rel/ifuse -O3
+          clang src/ifuse.c -I"winfsp/inc/fuse3" -l"imobiledevice-1.0" -l"usbmuxd-2.0" -l"plist-2.0" -o rel/ifuse -O3
           find /mingw64/bin/ -type f \( -name "*idevice*" -o \
                                       -name "libimobiledevice*" -o \
                                       -name "libplist*" -o \
