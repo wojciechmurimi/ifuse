@@ -73,6 +73,13 @@ lockdownd_client_t control = NULL;
 typeof(&fuse_get_context) dyn_fuse_get_context = NULL;
 #else
 #define dyn_fuse_get_context fuse_get_context
+#define fuse_mode_t mode_t
+#define fuse_off_t off_t
+#define fuse_uid_t uid_t
+#define fuse_gid_t gid_t
+#define fuse_stat stat
+#define fuse_timespec timespec
+#define fuse_statvfs statvfs
 #endif
 
 // Start-Process -FilePath .\ifuse.exe -WindowStyle Hidden -ArgumentList "-m
@@ -819,7 +826,7 @@ int main(int argc, char *argv[]) {
 #else
 #define dyn_fuse_opt_parse fuse_opt_parse
 #define dyn_fuse_opt_add_arg fuse_opt_add_arg
-#define dyn_fuse_main_real fuse3_main_real
+#define dyn_fuse_main_real fuse_main_real
 #endif
 
   int res = EXIT_FAILURE;
