@@ -1,0 +1,87 @@
+name: build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write 
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          install: >
+            git
+            mingw-w64-x86_64-clang 
+            mingw-w64-x86_64-curl
+            libtool
+            openssl
+            openssl-devel
+            python-devel
+            pkgconf
+            autoconf
+            automake
+            make
+            zip
+          update: true
+
+      - name: Configure and Build
+        shell: msys2 {0}
+        run: |
+          repos=("libplist" "libimobiledevice-glue" "libusbmuxd" "libtatsu" "libimobiledevice")
+          for repo in "${repos[@]}"; do
+            echo "Building $repo..."
+            git clone "https://github.com/libimobiledevice/$repo"
+            pushd "$repo" > /dev/null
+            ./autogen.sh
+            make -j$(nproc)
+            make install
+            popd > /dev/null
+          done   
+
+      - name: Build
+        shell: msys2 {0}
+        run: |
+          mkdir -p rel
+          git clone "https://github.com/winfsp/winfsp.git"
+          clang src/main.c -I"winfsp/inc/fuse3" -l"imobiledevice-1.0" -l"usbmuxd-2.0" -l"plist-2.0" -o rel/ifuse -O3
+          find /mingw64/bin/ -type f \( -name "*idevice*" -o \
+                                      -name "libimobiledevice*" -o \
+                                      -name "libplist*" -o \
+                                      -name "plistutil.exe" -o \
+                                      -name "afcclient.exe" -o \
+                                      -name "libusbmuxd*" -o \
+                                      -name "inetcat.exe" -o \
+                                      -name "iproxy.exe" -o \
+                                      -name "libtatsu*.dll" -o \
+                                      -name "zlib*.dll" -o \
+                                      -name "libbrotli*.dll" -o \
+                                      -name "libiconv*.dll" -o \
+                                      -name "libunistring*.dll" -o \
+                                      -name "libssh*.dll" -o \
+                                      -name "libintl*.dll" -o \
+                                      -name "libidn*.dll" -o \
+                                      -name "libnghttp*.dll" -o \
+                                      -name "libpsl*.dll" -o \
+                                      -name "libzstd*.dll" -o \
+                                      -name "libcrypto*.dll" -o \
+                                      -name "libssl*.dll" \) \
+                                      -exec cp -v {} rel \;
+          cd rel && zip -r ../winifuse_w64.zip .
+      - name: publish release
+        env:
+          github_token: ${{secrets.GITHUB_TOKEN}}
+        run: |
+          TAG="v$(date +'%Y%m%d')-$(git rev-parse --short HEAD)"
+          echo "TAG=$TAG" >> $GITHUB_ENV
+          echo "Generated tag: $TAG"
+          gh release create "$TAG" --title "Release"
+          gh release upload "$TAG" winifuse_w64_w64.zip  
+        shell: bash       
