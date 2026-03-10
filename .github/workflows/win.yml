@@ -52,7 +52,7 @@ jobs:
           mkdir -p rel
           git clone "https://github.com/winfsp/winfsp.git"
           clang src/ifuse.c -I"winfsp/inc/fuse3" -l"imobiledevice-1.0" -l"usbmuxd-2.0" -l"plist-2.0" -o rel/ifuse -O3
-          clang++ src/runner.cpp -o rel/runner -03
+          clang++ src/runner.cpp -o rel/runner -O3
           cat > rel/start_ifuse.bat << 'EOF'
           @echo off
           if "%~1"=="" (
