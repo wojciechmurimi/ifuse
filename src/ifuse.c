@@ -234,8 +234,39 @@ static int get_afc_file_mode(afc_file_mode_t *afc_mode, int flags) {
   return 0;
 }
 
-static int ifuse_getattr(const char *path, struct fuse_stat *stbuf,
+static const char *fix_path_inner(const char *path, int idx) {
+#ifndef WIN32
+  return path;
+#endif
+      if (opts.use_container != 0) {
+    return path;
+  }
+  if (strncmp(path, "/Documents", 10) == 0) {
+    return path;
+  } else {
+    static char path_buf[2][4096] = {0};
+    strncpy(path_buf[idx], "/Documents", 10);
+    if (path[0] != '/') {
+      path_buf[idx][10] = '/';
+      strncpy(path_buf[idx] + 11, path, 4083);
+    } else {
+      strncpy(path_buf[idx] + 10, path, 4084);
+    }
+    return path_buf[idx];
+  }
+}
+
+static const char *fix_path(const char *path) {
+  return fix_path_inner(path, 0);
+}
+
+static const char *fix_path2(const char *path) {
+  return fix_path_inner(path, 1);
+}
+
+static int ifuse_getattr(const char *_path, struct fuse_stat *stbuf,
                          struct fuse_file_info *fi) {
+  const char *path = fix_path(_path);
   int res = 0;
   plist_t info = NULL;
 
@@ -302,9 +333,10 @@ static int ifuse_getattr(const char *path, struct fuse_stat *stbuf,
   return res;
 }
 
-static int ifuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
+static int ifuse_readdir(const char *_path, void *buf, fuse_fill_dir_t filler,
                          fuse_off_t offset, struct fuse_file_info *fi,
                          enum fuse_readdir_flags flags) {
+  const char *path = fix_path(_path);
   int i;
   char **dirs = NULL;
   afc_client_t afc = dyn_fuse_get_context()->private_data;
@@ -323,7 +355,8 @@ static int ifuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
   return 0;
 }
 
-static int ifuse_open(const char *path, struct fuse_file_info *fi) {
+static int ifuse_open(const char *_path, struct fuse_file_info *fi) {
+  const char *path = fix_path(_path);
   afc_client_t afc = dyn_fuse_get_context()->private_data;
   afc_error_t err;
   afc_file_mode_t mode = 0;
@@ -342,13 +375,15 @@ static int ifuse_open(const char *path, struct fuse_file_info *fi) {
   return 0;
 }
 
-static int ifuse_create(const char *path, fuse_mode_t mode,
+static int ifuse_create(const char *_path, fuse_mode_t mode,
                         struct fuse_file_info *fi) {
+  const char *path = fix_path(_path);
   return ifuse_open(path, fi);
 }
 
-static int ifuse_read(const char *path, char *buf, size_t size,
+static int ifuse_read(const char *_path, char *buf, size_t size,
                       fuse_off_t offset, struct fuse_file_info *fi) {
+  const char *path = fix_path(_path);
   uint32_t bytes = 0;
   afc_client_t afc = dyn_fuse_get_context()->private_data;
 
@@ -370,8 +405,9 @@ static int ifuse_read(const char *path, char *buf, size_t size,
   return bytes;
 }
 
-static int ifuse_write(const char *path, const char *buf, size_t size,
+static int ifuse_write(const char *_path, const char *buf, size_t size,
                        fuse_off_t offset, struct fuse_file_info *fi) {
+  const char *path = fix_path(_path);
   uint32_t bytes = 0;
   afc_client_t afc = dyn_fuse_get_context()->private_data;
 
@@ -393,8 +429,9 @@ static int ifuse_write(const char *path, const char *buf, size_t size,
   return bytes;
 }
 
-static int ifuse_utimens(const char *path, const struct fuse_timespec tv[2],
+static int ifuse_utimens(const char *_path, const struct fuse_timespec tv[2],
                          struct fuse_file_info *fi) {
+  const char *path = fix_path(_path);
   afc_client_t afc = dyn_fuse_get_context()->private_data;
   uint64_t mtime =
       (uint64_t)tv[1].tv_sec * (uint64_t)1000000000 + (uint64_t)tv[1].tv_nsec;
@@ -418,7 +455,8 @@ static int ifuse_fsync(const char *path, int datasync,
   return 0;
 }
 
-static int ifuse_release(const char *path, struct fuse_file_info *fi) {
+static int ifuse_release(const char *_path, struct fuse_file_info *fi) {
+  const char *path = fix_path(_path);
   afc_client_t afc = dyn_fuse_get_context()->private_data;
 
   afc_file_close(afc, fi->fh);
@@ -472,7 +510,8 @@ int ifuse_chown(const char *file, fuse_uid_t user, fuse_gid_t group,
   return 0;
 }
 
-int ifuse_statfs(const char *path, struct fuse_statvfs *stats) {
+int ifuse_statfs(const char *_path, struct fuse_statvfs *stats) {
+  const char *path = fix_path(_path);
   afc_client_t afc = dyn_fuse_get_context()->private_data;
   char **info_raw = NULL;
   uint64_t totalspace = 0, freespace = 0;
@@ -506,8 +545,9 @@ int ifuse_statfs(const char *path, struct fuse_statvfs *stats) {
   return 0;
 }
 
-int ifuse_truncate(const char *path, fuse_off_t size,
+int ifuse_truncate(const char *_path, fuse_off_t size,
                    struct fuse_file_info *fi) {
+  const char *path = fix_path(_path);
   afc_client_t afc = dyn_fuse_get_context()->private_data;
   afc_error_t err = afc_truncate(afc, path, size);
   if (err != AFC_E_SUCCESS) {
@@ -517,7 +557,8 @@ int ifuse_truncate(const char *path, fuse_off_t size,
   return 0;
 }
 
-int ifuse_readlink(const char *path, char *linktarget, size_t buflen) {
+int ifuse_readlink(const char *_path, char *linktarget, size_t buflen) {
+  const char *path = fix_path(_path);
   int i, ret;
   char **info = NULL;
   if (!path || !linktarget || (buflen == 0)) {
@@ -544,7 +585,9 @@ int ifuse_readlink(const char *path, char *linktarget, size_t buflen) {
   return ret;
 }
 
-int ifuse_symlink(const char *target, const char *linkname) {
+int ifuse_symlink(const char *_target, const char *_linkname) {
+  const char *target = fix_path(_target);
+  const char *linkname = fix_path2(_linkname);
   afc_client_t afc = dyn_fuse_get_context()->private_data;
 
   afc_error_t err = afc_make_link(afc, AFC_SYMLINK, target, linkname);
@@ -554,7 +597,9 @@ int ifuse_symlink(const char *target, const char *linkname) {
   return -get_afc_error_as_errno(err);
 }
 
-int ifuse_link(const char *target, const char *linkname) {
+int ifuse_link(const char *_target, const char *_linkname) {
+  const char *target = fix_path(_target);
+  const char *linkname = fix_path2(_linkname);
   afc_client_t afc = dyn_fuse_get_context()->private_data;
 
   afc_error_t err = afc_make_link(afc, AFC_HARDLINK, target, linkname);
@@ -564,7 +609,8 @@ int ifuse_link(const char *target, const char *linkname) {
   return -get_afc_error_as_errno(err);
 }
 
-int ifuse_unlink(const char *path) {
+int ifuse_unlink(const char *_path) {
+  const char *path = fix_path(_path);
   afc_client_t afc = dyn_fuse_get_context()->private_data;
 
   afc_error_t err = afc_remove_path(afc, path);
@@ -574,7 +620,9 @@ int ifuse_unlink(const char *path) {
   return -get_afc_error_as_errno(err);
 }
 
-int ifuse_rename(const char *from, const char *to, unsigned int flags) {
+int ifuse_rename(const char *_from, const char *_to, unsigned int flags) {
+  const char *to = fix_path(_to);
+  const char *from = fix_path2(_from);
   afc_client_t afc = dyn_fuse_get_context()->private_data;
 
   afc_error_t err = afc_rename_path(afc, from, to);
@@ -584,7 +632,8 @@ int ifuse_rename(const char *from, const char *to, unsigned int flags) {
   return -get_afc_error_as_errno(err);
 }
 
-int ifuse_mkdir(const char *dir, fuse_mode_t ignored) {
+int ifuse_mkdir(const char *_dir, fuse_mode_t ignored) {
+  const char *dir = fix_path(_dir);
   afc_client_t afc = dyn_fuse_get_context()->private_data;
 
   afc_error_t err = afc_make_directory(afc, dir);
@@ -800,6 +849,7 @@ void *resolve_winfsp_func(HMODULE hmodule, const char *name) {
 
 int main(int argc, char *argv[]) {
 #ifdef WIN32
+  FreeConsole();
   HMODULE hmodule =
     #if defined(__x86_64__)
       LoadLibrary("C:\\Program Files (x86)\\WinFsp\\bin\\winfsp-x64.dll");
@@ -976,10 +1026,12 @@ int main(int argc, char *argv[]) {
     }
     plist_free(dict);
 
+    #ifndef WIN32
     if (opts.use_container == 0) {
       dyn_fuse_opt_add_arg(&args, "-omodules=subdir");
       dyn_fuse_opt_add_arg(&args, "-osubdir=Documents");
     }
+    #endif
   }
 
   res = dyn_fuse_main_real(args.argc, args.argv, &ifuse_oper,
