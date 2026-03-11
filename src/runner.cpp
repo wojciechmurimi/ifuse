@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
   if (start) {
     std::string cmd = ".\\ifuse.exe ";
     for (i = 2; i < argc; i++) {
-      cmd.append("\"" + std::string(argv[i]) + "\"");
+      cmd.append(argv[i]);
       if (i != (argc - 1)) {
         cmd.append(" ");
       }
